@@ -2,9 +2,10 @@
 
 header('Content-Type: application/json');
 
-$token=file_get_contents('../token');
+$json_data = file_get_contents('../tokens.json');
+$tokens=json_decode($json_data);
 
-if($token === FALSE){
+if($tokens === FALSE){
     http_response_code(500);
     print(json_encode('Please generate a token'));
     exit(1); 
@@ -17,8 +18,16 @@ if(empty($_GET['project']) && empty($_GET['token'])){
     exit(1);
 }
 
+// Check in the tokens
+foreach ($tokens as &$token){
+    if($token->token === $_GET['token']){
+        $token->valid = true;
+        break;
+    }
+}
+
 // Check the token
-if($_GET['token'] !== $token){
+if(empty($token->valid)){
     http_response_code(304);
     print(json_encode('Bad token'));
     exit(1);
@@ -26,7 +35,7 @@ if($_GET['token'] !== $token){
 
 // Call script project
 // Good
-if(exec(escapeshellcmd(dirname(__FILE__) . '/../scripts/listener.sh '.$_GET['project'].' 2>&1; echo $?')) === 0){
+if(exec(escapeshellcmd(dirname(__FILE__) . '/../scripts/install.sh '.$token->project.' 2>&1; echo $?')) == 0){
     http_response_code(200);
     print(json_encode(['update' => 'good']));
     exit(0);
